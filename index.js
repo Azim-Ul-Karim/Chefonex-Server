@@ -110,6 +110,19 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/users/profile', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const user = await usersCollection.findOne({ email });
+      res.send(user);
+    });
+
+    app.get('/users/:email/role', verifyFBToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ role: user?.role || 'user' });
+    });
+
     
 
   } finally {
