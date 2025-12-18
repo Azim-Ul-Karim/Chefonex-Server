@@ -123,7 +123,50 @@ async function run() {
       res.send({ role: user?.role || 'user' });
     });
 
-    
+    app.patch('/users/fraud/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: 'fraud' } }
+      );
+
+      res.send(result);
+    });
+
+    // Favorites APIs
+
+    const favoritesCollection = db.collection('favorites');
+
+    app.get('/favorites', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const result = await favoritesCollection.find({ userEmail: email }).sort({ addedTime: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.post('/favorites', verifyFBToken, async (req, res) => {
+      const favorite = req.body;
+
+      const exists = await favoritesCollection.findOne({
+        userEmail: favorite.userEmail,
+        mealId: favorite.mealId
+      });
+
+      if (exists) {
+        return res.send({ inserted: false, message: 'Already added' });
+      }
+
+      const result = await favoritesCollection.insertOne(favorite);
+      res.send({ inserted: true, result });
+    });
+
+    app.delete('/favorites/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await favoritesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+   
 
   } finally {
     // await client.close();
