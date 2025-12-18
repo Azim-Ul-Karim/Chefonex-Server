@@ -427,6 +427,39 @@ async function run() {
       res.send(result);
     });
 
+    // Orders APIs
+
+    const ordersCollection = db.collection('orders');
+
+    app.get('/orders', async (req, res) => {
+      const query = {};
+      const { email } = req.query;
+
+      if (email) {
+        query.userEmail = email;
+      }
+
+      const options = { sort: { orderTime: -1 } }
+      const cursor = ordersCollection.find(query, options);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.get('/orders/chef', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const chef = await usersCollection.findOne({ email });
+      const query = { chefId: chef.chefId };
+      const result = await ordersCollection.find(query).sort({ orderTime: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.get('/orders/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await ordersCollection.findOne(query);
+      res.send(result);
+    })
+
     
 
   } finally {
