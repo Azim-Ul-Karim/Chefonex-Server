@@ -340,6 +340,59 @@ async function run() {
       });
     });
 
+    // Meals APIs
+
+    const mealsCollection = db.collection('meals');
+
+    app.get("/meals", async (req, res) => {
+      const {
+        search = "",
+        sort = "",
+        page = 1,
+        limit = 10
+      } = req.query;
+
+      const query = {};
+
+      if (search) {
+        query.mealName = { $regex: search, $options: "i" };
+      }
+
+      let sortOption = { postedAt: -1 };
+      
+      if (sort === "asc") sortOption = { mealPrice: 1 };
+      if (sort === "desc") sortOption = { mealPrice: -1 };
+
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const meals = await mealsCollection
+        .find(query)
+        .sort(sortOption)
+        .skip(skip)
+        .limit(Number(limit))
+        .toArray();
+
+      const total = await mealsCollection.countDocuments(query);
+
+      res.send({
+        meals,
+        total
+      });
+    });
+
+    app.get('/meals/profile', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const result = await mealsCollection.find({ userEmail: email }).toArray();
+      res.send(result);
+    });
+
+    app.get('/meals/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await mealsCollection.findOne(query);
+      res.send(result);
+    });
+
     
 
   } finally {
