@@ -266,6 +266,80 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/role-requests/approve/:id', verifyFBToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const request = await roleRequestsCollection.findOne({ _id: new ObjectId(id) });
+
+      let updateUser = {};
+
+      if (request.requestType === 'chef') {
+        const chefId = 'Chef-' + Math.floor(1000 + Math.random() * 9000);
+        updateUser = {
+          role: 'chef',
+          chefId: chefId
+        };
+      }
+
+      if (request.requestType === 'admin') {
+        updateUser = {
+          role: 'admin'
+        };
+      }
+
+      await usersCollection.updateOne(
+        { email: request.userEmail },
+        { $set: updateUser }
+      );
+
+      const result = await roleRequestsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { requestStatus: 'approved' } }
+      );
+
+      res.send(result);
+    });
+
+    app.patch('/role-requests/reject/:id', verifyFBToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await roleRequestsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { requestStatus: 'rejected' } }
+      );
+
+      res.send(result);
+    });
+
+    app.get('/admin/statistics', verifyFBToken, verifyAdmin, verifyAdmin, async (req, res) => {
+      const totalUsers = await usersCollection.countDocuments();
+
+      const ordersDelivered = await ordersCollection.countDocuments({
+        orderStatus: 'delivered'
+      });
+
+      const ordersPending = await ordersCollection.countDocuments({
+        orderStatus: { $ne: 'delivered' }
+      });
+
+      const payments = await paymentsCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalPayment: { $sum: "$amount" }
+          }
+        }
+      ]).toArray();
+
+      const totalPaymentAmount = payments[0]?.totalPayment || 0;
+
+      res.send({
+        totalUsers,
+        ordersDelivered,
+        ordersPending,
+        totalPaymentAmount
+      });
+    });
+
     
 
   } finally {
