@@ -460,6 +460,46 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/orders', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const user = await usersCollection.findOne({ email });
+
+      if (user.status === 'fraud') {
+        return res.status(403).send({ message: 'Fraud users cannot place orders' });
+      }
+
+      const order = {
+        ...req.body,
+        userEmail: email,
+        paymentStatus: 'pending',
+        orderStatus: 'pending',
+        estimateDeliveryTime: req.body.estimateDeliveryTime,
+        orderTime: new Date()
+      };
+
+      const result = await ordersCollection.insertOne(order);
+      res.send(result);
+    });
+
+    app.patch('/orders/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const email = req.decoded_email;
+
+      const chef = await usersCollection.findOne({ email });
+
+      if (!chef?.chefId) {
+        return res.status(403).send({ message: 'Not authorized' });
+      }
+
+      const result = await ordersCollection.updateOne(
+        { _id: new ObjectId(id), chefId: chef.chefId },
+        { $set: { orderStatus: status } }
+      );
+
+      res.send(result);
+    });
+
     
 
   } finally {
