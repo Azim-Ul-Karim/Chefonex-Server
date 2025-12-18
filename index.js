@@ -500,7 +500,89 @@ async function run() {
       res.send(result);
     });
 
-    
+    // Payments APIs
+
+    const paymentsCollection = db.collection('payments');
+
+    app.post('/payment-checkout', async (req, res) => {
+      const paymentInfo = req.body;
+
+      const amount = parseInt(paymentInfo.totalPrice) * 100;
+
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: 'USD',
+              unit_amount: amount,
+              product_data: {
+                name: `Payment for ${paymentInfo.mealName}`
+              }
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo.userEmail,
+        mode: 'payment',
+        metadata: {
+          orderId: paymentInfo.orderId,
+          name: paymentInfo.mealName
+        },
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+      });
+      res.send({ url: session.url });
+    });
+
+    app.patch('/payment-success', async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      // console.log(session);
+
+      const trackingId = generateTrackingId();
+      const transactionId = session.payment_intent;
+      const query = { transactionId: transactionId };
+      const paymentExist = await paymentsCollection.findOne(query);
+
+      if (paymentExist) {
+        return res.send({
+          message: 'Already Exists.',
+          transactionId,
+          trackingId: paymentExist.trackingId
+        });
+      }
+
+      if (session.payment_status === 'paid') {
+        const id = session.metadata.orderId;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            paymentStatus: 'paid',
+            trackingId: trackingId
+          }
+        }
+
+        const result = await ordersCollection.updateOne(query, update);
+
+        const payment = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          customerEmail: session.customer_email,
+          orderId: session.metadata.orderId,
+          mealName: session.metadata.name,
+          transactionId: transactionId,
+          paymentStatus: session.payment_status,
+          paidAt: new Date(),
+          trackingId: trackingId
+        }
+
+        if (session.payment_status === 'paid') {
+          const resultPayment = await paymentsCollection.insertOne(payment);
+          res.send({ success: true, modifyOrder: result, trackingId: trackingId, transactionId: session.payment_intent, paymentInfo: resultPayment });
+        }
+      }
+      res.send({ success: false });
+    })
 
   } finally {
     // await client.close();
