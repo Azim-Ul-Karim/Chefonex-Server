@@ -166,7 +166,45 @@ async function run() {
       res.send(result);
     });
 
-   
+    // Reviews APIs
+
+    const reviewsCollection = db.collection('reviews');
+
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewsCollection.find().sort({ reviewedAt: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.post('/reviews', verifyFBToken, async (req, res) => {
+      const mealId = req.body.mealId;
+      const reviewerEmail = req.decoded_email;
+
+      const exists = await reviewsCollection.findOne({
+        mealId,
+        reviewerEmail
+      });
+
+      if (exists) {
+        return res.send({ message: 'Already reviewed this meal' });
+      }
+
+      const reviewData = {
+        ...req.body,
+        reviewerEmail,
+        reviewedAt: new Date()
+      };
+
+      const result = await reviewsCollection.insertOne(reviewData);
+      res.send(result);
+    });
+
+    app.get('/reviews/:mealId', async (req, res) => {
+      const mealId = req.params.mealId;
+      const result = await reviewsCollection.find({ mealId }).sort({ reviewedAt: -1 }).toArray();
+      res.send(result);
+    });
+
+    
 
   } finally {
     // await client.close();
