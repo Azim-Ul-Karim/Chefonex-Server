@@ -204,6 +204,30 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/my-reviews', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const result = await reviewsCollection.find({ reviewerEmail: email }).sort({ reviewedAt: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.patch('/reviews/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const { rating, comment } = req.body;
+
+      const result = await reviewsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { rating, comment } }
+      );
+
+      res.send(result);
+    });
+
+    app.delete('/reviews/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await reviewsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
     
 
   } finally {
