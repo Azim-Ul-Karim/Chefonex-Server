@@ -310,7 +310,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/admin/statistics', verifyFBToken, verifyAdmin, verifyAdmin, async (req, res) => {
+    app.get('/admin/statistics', verifyFBToken, verifyAdmin, async (req, res) => {
       const totalUsers = await usersCollection.countDocuments();
 
       const ordersDelivered = await ordersCollection.countDocuments({
