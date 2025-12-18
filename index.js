@@ -62,7 +62,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded_email;
@@ -232,7 +232,7 @@ async function run() {
 
     const roleRequestsCollection = db.collection('roleRequests');
 
-    app.post('/role-requests', verifyFBToken, verifyAdmin, async (req, res) => {
+    app.post('/role-requests', verifyFBToken, async (req, res) => {
       const email = req.decoded_email;
       const user = await usersCollection.findOne({ email });
       const { requestType } = req.body;
@@ -359,7 +359,7 @@ async function run() {
       }
 
       let sortOption = { postedAt: -1 };
-      
+
       if (sort === "asc") sortOption = { mealPrice: 1 };
       if (sort === "desc") sortOption = { mealPrice: -1 };
 
@@ -431,7 +431,7 @@ async function run() {
 
     const ordersCollection = db.collection('orders');
 
-    app.get('/orders', async (req, res) => {
+    app.get('/orders', verifyFBToken, async (req, res) => {
       const query = {};
       const { email } = req.query;
 
