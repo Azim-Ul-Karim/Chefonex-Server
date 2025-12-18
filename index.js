@@ -228,6 +228,44 @@ async function run() {
       res.send(result);
     });
 
+    // Role Requests APIs
+
+    const roleRequestsCollection = db.collection('roleRequests');
+
+    app.post('/role-requests', verifyFBToken, verifyAdmin, async (req, res) => {
+      const email = req.decoded_email;
+      const user = await usersCollection.findOne({ email });
+      const { requestType } = req.body;
+
+      const existingRequest = await roleRequestsCollection.findOne({
+        userEmail: email,
+        requestType,
+        requestStatus: 'pending'
+      });
+
+      if (existingRequest) {
+        return res.send({ message: 'Request already pending' });
+      }
+
+      const requestData = {
+        userId: user._id,
+        userName: user.displayName,
+        userEmail: user.email,
+        requestType: requestType,
+        requestStatus: 'pending',
+        requestTime: new Date()
+      };
+
+      const result = await roleRequestsCollection.insertOne(requestData);
+      res.send(result);
+    });
+
+    app.get('/role-requests', verifyFBToken, verifyAdmin, async (req, res) => {
+      const cursor = roleRequestsCollection.find().sort({ requestTime: -1 });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     
 
   } finally {
