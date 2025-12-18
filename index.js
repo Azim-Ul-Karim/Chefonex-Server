@@ -393,6 +393,40 @@ async function run() {
       res.send(result);
     });
 
+    app.post('/meals', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const user = await usersCollection.findOne({ email });
+
+      if (user.status === 'fraud') {
+        return res.status(403).send({ message: 'Fraud chefs cannot create meals' });
+      }
+
+      const meal = req.body;
+      const result = await mealsCollection.insertOne(meal);
+      res.send(result);
+    });
+
+    app.patch('/meals/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedMeal = req.body;
+
+      const result = await mealsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: updatedMeal
+        }
+      );
+
+      res.send(result);
+    });
+
+    app.delete('/meals/:id', verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await mealsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     
 
   } finally {
